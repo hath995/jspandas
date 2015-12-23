@@ -1,5 +1,5 @@
-"use strict";
 /// <reference path="../typings/tsd.d.ts" />
+"use strict";
 import {expect} from 'chai';
 import {JSPandas} from '../src/series';
 
@@ -280,6 +280,26 @@ describe('JSPandas.Series', () => {
         let test2 = new JSPandas.Series(['c','d']);
         expect(() => test.add(test2)).to.throw(Error);
 
+    });
+
+    it('should drop specified labels', () => {
+        let test = new JSPandas.Series([1,2,3,4,5],['a','b','c','a','a']);
+        let result_singular = test.drop('c');
+        let result_plural = test.drop(['a','c']);
+
+        expect(result_singular.data).to.deep.equal([1,2,4,5]);
+        expect(result_singular.data_index).to.deep.equal(['a','b','a','a']);
+
+
+        expect(result_plural.data).to.deep.equal([2]);
+        expect(result_plural.data_index).to.deep.equal(['b']);
+    })
+
+    it('should have head return n items', () => {
+        let test = new JSPandas.Series([1,2,3,4,5],['a','b','c','a','a']);
+        let result = test.head(3);
+        expect(result.data).to.deep.equal([1,2,3]);
+        expect(result.data_index).to.deep.equal(['a','b','c']);
     });
 });
 

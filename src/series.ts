@@ -111,7 +111,6 @@ export namespace JSPandas {
             }
         }
 
-
         static isContiguous(xs: Array<number>) {
             let start: number;
             for(let i = 0; i<xs.length;i++) {
@@ -192,7 +191,7 @@ export namespace JSPandas {
             return this.data[index];
         }
 
-        *iter() {
+        *iter(): IterableIterator<A> {
             yield* this.data;
         }
 
@@ -280,8 +279,8 @@ export namespace JSPandas {
                 }
                return new Series(values, indices);
             }else{ 
-                if (this.index_lookup.has(<B>ixes)) {
-                    let lookup = this.index_lookup.get(<B>ixes);
+                if (this.index_lookup.has(ixes)) {
+                    let lookup = this.index_lookup.get(ixes);
                     if(typeof lookup === "number") {
                         return this.data[lookup];
                     }else if(isNumberArray(lookup)) {
@@ -298,11 +297,43 @@ export namespace JSPandas {
         }
 
 
-        *iteritems() {
+        *iteritems(): IterableIterator<[B, A]> {
             for(let i = 0; i < this.data.length; i++) {
                 yield [this.data_index[i], this.data[i]];
             }
         }
+
+
+        drop(labels: B | B[]) {
+            let values: A[] = [];
+            let indices: B[] = [];
+            let to_drop = toArray(labels);
+            let index_drops = new Set<number>(); 
+            for(let index of to_drop) {
+                let lookup = this.index_lookup.get(index);
+                if(Array.isArray(lookup)) {
+                    for(let lookup_index of lookup) {
+                        index_drops.add(lookup_index);
+                    }
+                }else{
+                    index_drops.add(lookup);
+                }
+            }
+            for(let i = 0; i < this.data.length; i++) {
+                if( !index_drops.has(i) ) {
+                    values.push(this.data[i]);
+                    indices.push(this.data_index[i]);
+
+                }
+            }
+            return new Series(values, indices);
+        }
+
+        head(n: number) {
+            let take_n = n || 5;
+            return new Series(this.data.slice(0, take_n), this.data_index.slice(0, take_n));
+        }
+
     }
 
     export interface Series<A,B> {
