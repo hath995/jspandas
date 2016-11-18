@@ -301,6 +301,7 @@ describe('JSPandas.Series', () => {
         expect(result.data).to.deep.equal([1,2,3]);
         expect(result.data_index).to.deep.equal(['a','b','c']);
     });
+
 });
 
 describe('Slice', () => {

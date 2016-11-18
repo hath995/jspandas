@@ -1,7 +1,7 @@
 "use strict";
 export namespace JSPandas {
     "use strict";
-    function range(start: number, end: number, increment?: number): any[] {
+    export function range(start: number, end: number, increment?: number): any[] {
         increment = increment || 1;
         let result: number[] = [];
         for(let i = start; i < end; i+=increment) {
@@ -21,17 +21,17 @@ export namespace JSPandas {
         return Array.isArray(x) ? x : [x];
     }
 
-   function binaryOpGenerator<B>(fn: (a: number, b:number) => number): (that: Series<number,B>) => Series<number, B> {
-        return function<B>(that: Series<number,B>, fill_value?: number): Series<number, B> {
+   function binaryOpGenerator<IndexType>(fn: (a: number, b:number) => number): (that: Series<number,IndexType>) => Series<number, IndexType> {
+        return function<IndexType>(that: Series<number,IndexType>, fill_value?: number): Series<number, IndexType> {
             let filler = toArray(fill_value !== undefined ? fill_value : NaN);
             if(isNumberArray(this.data) && isNumberArray(that.data)) {
                 let values: number[] = [];
-                let indices: B[] = [];
-                let both_indices_set: Set<B> = new Set(<Iterable<B>>this.index_lookup.keys())
+                let indices: IndexType[] = [];
+                let both_indices_set: Set<IndexType> = new Set(<Iterable<IndexType>>this.index_lookup.keys())
                 for(let key of that.index_lookup.keys()) {
                     both_indices_set.add(key);
                 }
-                let both_indices: B[] = Array.from(both_indices_set.keys());
+                let both_indices: IndexType[] = Array.from(both_indices_set.keys());
                 both_indices.sort((a,b) => a < b ? -1 : a === b ? 0 : 1);
                 for(let index of both_indices) {
                     let lh_val: number[];
@@ -61,13 +61,13 @@ export namespace JSPandas {
    }
 
 
-    export class Slice<A>  {
-        start: A;
-        end: A;
+    export class Slice<DataType>  {
+        start: DataType;
+        end: DataType;
         start_ix: number;
         end_ix: number;
         skip: number;
-        constructor(start: A, end?: A, skip?: number) {
+        constructor(start: DataType, end?: DataType, skip?: number) {
             this.start = start;
             this.end = end || null;
             this.skip = skip || 1;
@@ -82,7 +82,7 @@ export namespace JSPandas {
             }
         }
 
-        *labelIter(indices: A[], mapping: Map<A,number | Array<number>>) {
+        *labelIter(indices: DataType[], mapping: Map<DataType,number | Array<number>>) {
             let starting_position = mapping.get(this.start);
             if(isNumberArray(starting_position)) {
                 if(Slice.isContiguous(starting_position)) {
@@ -123,12 +123,12 @@ export namespace JSPandas {
             return true;
         }
     }
-
-    export class Series<A, B> {
-        data: Array<A>;
-        data_index: Array<B>;
-        index_lookup: Map<B,number | Array<number>>;
-        constructor(data: Array<A>, index?: Array<B>) {
+    //A, B
+    export class Series<DataType, IndexType> {
+        data: Array<DataType>;
+        data_index: Array<IndexType>;
+        index_lookup: Map<IndexType,number | Array<number>>;
+        constructor(data: Array<DataType>, index?: Array<IndexType>) {
             this.data = data;
             if(index && index.length !== data.length) {
                 throw new Error("Wrong number of items passed in data");
@@ -170,13 +170,13 @@ export namespace JSPandas {
             return new Series(values, this.data_index);
         }
 
-        at(label: B): A | Array<A> {
+        at(label: IndexType): DataType | Array<DataType> {
             if(this.index_lookup.has(label)) {
                 let indices = this.index_lookup.get(label);
                 if(typeof indices === "number") {
                     return this.data[indices];
                 }else if(isNumberArray(indices)) {
-                    let data: Array<A> = [];
+                    let data: Array<DataType> = [];
                     for(let index of indices) { 
                         data.push(this.data[index]);
                     }
@@ -191,13 +191,13 @@ export namespace JSPandas {
             return this.data[index];
         }
 
-        *iter(): IterableIterator<A> {
+        *iter(): IterableIterator<DataType> {
             yield* this.data;
         }
 
-        iloc(ixes: number | Array<number | boolean> | Slice<number>): A | Series<A,B> {
-            let values: Array<A> = [];
-            let indices: Array<B> = [];
+        iloc(ixes: number | Array<number | boolean> | Slice<number>): DataType | Series<DataType,IndexType> {
+            let values: Array<DataType> = [];
+            let indices: Array<IndexType> = [];
             if(typeof ixes === 'number') {
                 if(ixes >= 0 && ixes < this.data.length) {
                     return this.data[ixes];
@@ -235,9 +235,9 @@ export namespace JSPandas {
         }
 
 
-        loc(ixes: B | Array<B | boolean> | Slice<B>): A | Series<A,B> {
-            let values: Array<A> = [];
-            let indices: Array<B> = [];
+        loc(ixes: IndexType | Array<IndexType | boolean> | Slice<IndexType>): DataType | Series<DataType,IndexType> {
+            let values: Array<DataType> = [];
+            let indices: Array<IndexType> = [];
             if(ixes instanceof Slice) {
                 for(let ix of ixes.labelIter(this.data_index, this.index_lookup)) {
                     values.push(this.data[ix]);
@@ -256,21 +256,21 @@ export namespace JSPandas {
                 }else{
                     var has_valid_index = false; //handling the array of labels case
                     for(let i = 0; i < ixes.length; i++) {
-                        if(this.index_lookup.has(<B>ixes[i])) {
+                        if(this.index_lookup.has(<IndexType>ixes[i])) {
                             has_valid_index = true;
-                            let index_values = this.at(<B>ixes[i]);
+                            let index_values = this.at(<IndexType>ixes[i]);
                             if(index_values instanceof Array) {
                                 for(let val of index_values) {
                                     values.push(val);
-                                    indices.push(<B>ixes[i]);
+                                    indices.push(<IndexType>ixes[i]);
                                 }
                             }else if(typeof index_values === "number") {
-                                values.push(<A>index_values);
-                                indices.push(<B>ixes[i]);
+                                values.push(<DataType>index_values);
+                                indices.push(<IndexType>ixes[i]);
                             }
                         }else{
                             values.push(undefined);
-                            indices.push(<B>ixes[i]);
+                            indices.push(<IndexType>ixes[i]);
                         }
                     }
                     if(!has_valid_index) {
@@ -297,16 +297,16 @@ export namespace JSPandas {
         }
 
 
-        *iteritems(): IterableIterator<[B, A]> {
+        *iteritems(): IterableIterator<[IndexType, DataType]> {
             for(let i = 0; i < this.data.length; i++) {
                 yield [this.data_index[i], this.data[i]];
             }
         }
 
 
-        drop(labels: B | B[]) {
-            let values: A[] = [];
-            let indices: B[] = [];
+        drop(labels: IndexType | IndexType[]) {
+            let values: DataType[] = [];
+            let indices: IndexType[] = [];
             let to_drop = toArray(labels);
             let index_drops = new Set<number>(); 
             for(let index of to_drop) {
@@ -336,14 +336,14 @@ export namespace JSPandas {
 
     }
 
-    export interface Series<A,B> {
-        add(that: Series<A,B>, fill_value?: number): Series<A,B>;
-        sub(that: Series<A,B>, fill_value?: number): Series<A,B>;
-        mul(that: Series<A,B>, fill_value?: number): Series<A,B>;
-        div(that: Series<A,B>, fill_value?: number): Series<A,B>;
-        pow(that: Series<A,B>, fill_value?: number): Series<A,B>;
-        mod(that: Series<A,B>, fill_value?: number): Series<A,B>;
-        floordiv(that: Series<A,B>, fill_value?: number): Series<A,B>;
+    export interface Series<DataType,IndexType> {
+        add(that: Series<DataType,IndexType>, fill_value?: number): Series<DataType,IndexType>;
+        sub(that: Series<DataType,IndexType>, fill_value?: number): Series<DataType,IndexType>;
+        mul(that: Series<DataType,IndexType>, fill_value?: number): Series<DataType,IndexType>;
+        div(that: Series<DataType,IndexType>, fill_value?: number): Series<DataType,IndexType>;
+        pow(that: Series<DataType,IndexType>, fill_value?: number): Series<DataType,IndexType>;
+        mod(that: Series<DataType,IndexType>, fill_value?: number): Series<DataType,IndexType>;
+        floordiv(that: Series<DataType,IndexType>, fill_value?: number): Series<DataType,IndexType>;
     }
     Series.prototype.add = binaryOpGenerator((a,b) => a + b);
     Series.prototype.sub = binaryOpGenerator((a,b) => a - b);
